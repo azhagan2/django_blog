@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import HttpResponse
+from django.http import HttpResponseRedirect
 
-from .models import Blog, Category
+from .models import Blog, Category, Comment
 from django.db.models import Q
 
 
@@ -23,8 +23,23 @@ def posts_by_category(request, category_id):
 
 def blogs(request, slug):
     single_post = get_object_or_404(Blog, slug=slug, status='Publish')
+
+    if request.method == 'POST':
+        comment_text = request.POST.get('comment')
+        comment = Comment()
+        comment.user = request.user
+        comment.blog = single_post
+        comment.comment = comment_text
+        comment.save()
+        return HttpResponseRedirect(request.path_info)  # Redirect to the same page to prevent form resubmission
+    # comments
+    comments = Comment.objects.filter(blog=single_post).order_by('created_at')
+    comment_count = comments.count()
+    print(comments)
     context = {
-        'single_post': single_post
+        'single_post': single_post,
+        'comments': comments, 
+        'comment_count': comment_count
     }
     return render(request, 'blogs.html', context)
 
@@ -42,3 +57,4 @@ def search(request):
         'keyword': keyword
     }
     return render(request, 'search.html', context)
+
